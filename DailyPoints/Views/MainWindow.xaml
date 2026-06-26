@@ -13,42 +13,87 @@
     prism:ViewModelLocator.AutoWireViewModel="True"
     mc:Ignorable="d">
 
-    <Grid Margin="5">
-        <Grid.Resources>
-            <Style TargetType="TextBlock">
-                <Setter Property="FontSize" Value="{StaticResource CommonFontSize}" />
-            </Style>
+    <Grid Margin="15">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="1*" />
+        </Grid.ColumnDefinitions>
 
-            <Style TargetType="TextBox">
-                <Setter Property="FontSize" Value="{StaticResource CommonFontSize}" />
-            </Style>
-        </Grid.Resources>
+        <TabControl Grid.Column="0" Margin="0,0,15,0">
+            <TabItem Header="CSV一括変換">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBox
+                        Grid.Row="0"
+                        AcceptsReturn="True"
+                        ToolTip="JiraやRedmineのCSVを貼り付け" />
+                    <Button
+                        Grid.Row="1"
+                        Margin="0,10,0,0"
+                        HorizontalAlignment="Right"
+                        Content="CSVからポイントに変換" />
+                </Grid>
+            </TabItem>
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="0.5*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition />
-        </Grid.RowDefinitions>
+            <TabItem Header="セルフ入力">
+                <StackPanel Margin="10">
+                    <TextBlock Text="タスク名" />
+                    <TextBox x:Name="SelfTaskNameTextBox" Margin="0,5,0,10" />
 
-        <TextBlock
-            Grid.Row="0"
-            FontSize="28"
-            Text="1000" />
+                    <TextBlock Text="時間 (分)" />
+                    <TextBox x:Name="SelfTaskTimeTextBox" Margin="0,5,0,15" />
 
-        <TextBox
-            x:Name="TaskInputTextBox"
-            Grid.Row="1"
-            AcceptsReturn="True"
-            AcceptsTab="True" />
+                    <Button HorizontalAlignment="Right" Content="タスクを記録してポイント獲得" />
+                </StackPanel>
+            </TabItem>
 
-        <Button
-            Grid.Row="2"
-            Margin="0,5,0,15"
-            Padding="20,8"
-            HorizontalAlignment="Right"
-            Content="タスクをポイントに変換する" />
+            <TabItem Header="現実の出費">
+                <StackPanel Margin="10">
+                    <TextBlock Text="買ったもの・やりたいこと" />
+                    <TextBox x:Name="ExpenseNameTextBox" Margin="0,5,0,10" />
 
-        <ListBox x:Name="PointHistoryListBox" Grid.Row="3" />
+                    <TextBlock Text="金額 (￥)" />
+                    <TextBox x:Name="ExpensePriceTextBox" Margin="0,5,0,15" />
+
+                    <Button HorizontalAlignment="Right" Content="ポイントを消費して許可" />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Margin="0,0,0,20">
+                <TextBlock
+                    FontSize="12"
+                    Foreground="Gray"
+                    Text="総保有ポイント" />
+                <TextBlock
+                    FontSize="32"
+                    FontWeight="Bold"
+                    Foreground="DarkGreen"
+                    Text="1000 pt" />
+            </StackPanel>
+
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock
+                    Grid.Row="0"
+                    Margin="0,0,0,5"
+                    FontWeight="Bold"
+                    Text="ポイント履歴" />
+                <ListBox x:Name="PointHistoryListBox" Grid.Row="1" />
+            </Grid>
+        </Grid>
+
     </Grid>
 </Window>
