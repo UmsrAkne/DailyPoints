@@ -1,0 +1,40 @@
+﻿<prism:PrismApplication
+    x:Class="DailyPoints.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:prism="http://prismlibrary.com/"
+    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+    <Application.Resources>
+
+        <ResourceDictionary.MergedDictionaries>
+            <materialDesign:BundledTheme
+                BaseTheme="Dark"
+                PrimaryColor="Cyan"
+                SecondaryColor="Lime" />
+
+            <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/materialdesign2.defaults.xaml" />
+        </ResourceDictionary.MergedDictionaries>
+
+        <SolidColorBrush x:Key="DeepBackgroundBrush" Color="#252530" />
+        <SolidColorBrush x:Key="DarkBackgroundBrush" Color="#333340" />
+
+        <SolidColorBrush x:Key="DarkBackgroundAlphaBrush" Color="#99333340" />
+
+        <SolidColorBrush x:Key="MiddleBackgroundBrush" Color="#444455" />
+
+        <SolidColorBrush x:Key="SelectionBrush" Color="#446699" />
+        <SolidColorBrush x:Key="HoverBrush" Color="#335580" />
+
+        <SolidColorBrush x:Key="AccentBrush" Color="#00BCD4" />
+        <SolidColorBrush x:Key="AccentLightBrush" Color="#4DD0E1" />
+        <SolidColorBrush x:Key="AccentDarkBrush" Color="#0097A7" />
+
+        <SolidColorBrush x:Key="CommonForegroundBrush" Color="#DDDDDD" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#999999" />
+
+        <system:Double x:Key="CommonFontSize">17</system:Double>
+
+
+    </Application.Resources>
+</prism:PrismApplication>
