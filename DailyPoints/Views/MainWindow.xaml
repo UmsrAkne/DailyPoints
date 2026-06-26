@@ -12,7 +12,43 @@
     d:DataContext="{d:DesignInstance viewModels:MainWindowViewModel}"
     prism:ViewModelLocator.AutoWireViewModel="True"
     mc:Ignorable="d">
-    <Grid>
-        <ContentControl prism:RegionManager.RegionName="ContentRegion" />
+
+    <Grid Margin="5">
+        <Grid.Resources>
+            <Style TargetType="TextBlock">
+                <Setter Property="FontSize" Value="{StaticResource CommonFontSize}" />
+            </Style>
+
+            <Style TargetType="TextBox">
+                <Setter Property="FontSize" Value="{StaticResource CommonFontSize}" />
+            </Style>
+        </Grid.Resources>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="0.5*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            Grid.Row="0"
+            FontSize="28"
+            Text="1000" />
+
+        <TextBox
+            x:Name="TaskInputTextBox"
+            Grid.Row="1"
+            AcceptsReturn="True"
+            AcceptsTab="True" />
+
+        <Button
+            Grid.Row="2"
+            Margin="0,5,0,15"
+            Padding="20,8"
+            HorizontalAlignment="Right"
+            Content="タスクをポイントに変換する" />
+
+        <ListBox x:Name="PointHistoryListBox" Grid.Row="3" />
     </Grid>
 </Window>
