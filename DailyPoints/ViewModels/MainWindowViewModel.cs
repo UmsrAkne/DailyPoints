@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -43,6 +44,8 @@ public class MainWindowViewModel : BindableBase
 
     public int Point { get => point; set => SetProperty(ref point, value); }
 
+    public ObservableCollection<PointTransaction> PointTransactions { get; set; } = new ();
+
     public string InputTasksText { get => inputTasksText; set => SetProperty(ref inputTasksText, value); }
 
     public string InputDeductionTasksText
@@ -66,6 +69,7 @@ public class MainWindowViewModel : BindableBase
         Point += succeeds.Sum(t => t.Points);
 
         InputTasksText = string.Empty;
+        UpdatePointTransactions();
     });
 
     public DelegateCommand PointDeductionCommand => new DelegateCommand(() =>
@@ -83,6 +87,7 @@ public class MainWindowViewModel : BindableBase
         Point += succeeds.Sum(t => t.Points);
 
         InputDeductionTasksText = string.Empty;
+        UpdatePointTransactions();
     });
 
     private List<TaskItem> CsvToTaskItems(string csvContent)
@@ -132,6 +137,12 @@ public class MainWindowViewModel : BindableBase
         }
 
         return addedTransactions;
+    }
+
+    private void UpdatePointTransactions()
+    {
+        PointTransactions.Clear();
+        PointTransactions.AddRange(pointService.GetAll().OrderBy(t => t.Date));
     }
 
     [Conditional("DEBUG")]
