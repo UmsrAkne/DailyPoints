@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
+using DailyPoints.Databases;
 using DailyPoints.Models;
 
 namespace DailyPoints.Core
@@ -7,14 +9,19 @@ namespace DailyPoints.Core
     {
         public int Calculate(IEnumerable<TaskItem> items)
         {
-            var total = 0;
-            foreach (var taskItem in items)
-            {
-                total += (int)(taskItem.ActualTime.TotalMinutes * 1.1) * 10;
-                total += (int)taskItem.Estimation.TotalMinutes * 10;
-            }
+            return items.Sum(taskItem => Calculate(taskItem).Points);
+        }
 
-            return total;
+        public PointTransaction Calculate(TaskItem item)
+        {
+            var pt = new PointTransaction
+            {
+                TaskItem = item,
+            };
+
+            pt.Points += (int)(item.ActualTime.TotalMinutes * 1.1) * 10;
+            pt.Points += (int)item.Estimation.TotalMinutes * 10;
+            return pt;
         }
     }
 }

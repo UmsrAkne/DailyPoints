@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using DailyPoints.Databases;
 using DailyPoints.Views;
 using Prism.Ioc;
 
@@ -16,6 +17,7 @@ namespace DailyPoints
 
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
+            containerRegistry.Register<IRepository, PointTransactionRepository>();
         }
     }
 }

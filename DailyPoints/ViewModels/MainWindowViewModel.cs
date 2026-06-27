@@ -7,6 +7,7 @@ using System.Linq;
 using CsvHelper;
 using CsvHelper.Configuration;
 using DailyPoints.Core;
+using DailyPoints.Databases;
 using DailyPoints.Models;
 using DailyPoints.Utils;
 using DailyPoints.Utils.Csv;
@@ -27,11 +28,13 @@ public class MainWindowViewModel : BindableBase
 
     private readonly AppVersionInfo appVersionInfo = new();
     private readonly PointCalculator pointCalculator = new();
+    private readonly PointService pointService;
     private string inputTasksText = string.Empty;
     private int point = 1000;
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(PointService pointService)
     {
+        this.pointService = pointService;
         SetupDummyData();
     }
 
@@ -51,8 +54,9 @@ public class MainWindowViewModel : BindableBase
         var input = InputTasksText;
         var items = CsvToTaskItems(input);
 
-        var pts = pointCalculator.Calculate(items);
-        Point += pts;
+        var transactions = items.Select(t => pointCalculator.Calculate(t));
+        var succeeds = TryAddPointTransactions(transactions);
+        Point += succeeds.Sum(t => t.Points);
 
         InputTasksText = string.Empty;
     });
@@ -72,6 +76,38 @@ public class MainWindowViewModel : BindableBase
 
         var records = csv.GetRecords<TaskItem>().ToList();
         return records;
+    }
+
+    /// <summary>
+    /// 未登録のポイント取引データのみを抽出し、データベースに一括で追加します。
+    /// </summary>
+    /// <param name="transactions">追加を試みるポイント取引データのリスト</param>
+    /// <returns>重複がなく、正常に追加されたポイント取引データのリスト</returns>
+    private IEnumerable<PointTransaction> TryAddPointTransactions(IEnumerable<PointTransaction> transactions)
+    {
+        // 1. ループ内での全件全探索を避けるため、既存のIssueIdをHashSetにまとめておく（O(1)で検証可能にする）
+        var existingIssueIds = pointService.GetAll()
+            .Select(t => t.TaskItem.IssueId)
+            .ToHashSet();
+
+        var addedTransactions = new List<PointTransaction>();
+
+        foreach (var transaction in transactions)
+        {
+            // 2. 既に同じIssueIdが存在する場合はスキップ（重複登録の防止）
+            if (existingIssueIds.Contains(transaction.TaskItem.IssueId))
+            {
+                continue;
+            }
+
+            pointService.Add(transaction);
+            addedTransactions.Add(transaction);
+
+            // 3. 次のループで同じ引数内の重複にも対応できるよう、HashSetにも追加しておく
+            existingIssueIds.Add(transaction.TaskItem.IssueId);
+        }
+
+        return addedTransactions;
     }
 
     [Conditional("DEBUG")]
