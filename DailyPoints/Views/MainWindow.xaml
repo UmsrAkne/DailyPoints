@@ -7,13 +7,24 @@
     xmlns:prism="http://prismlibrary.com/"
     xmlns:viewModels="clr-namespace:DailyPoints.ViewModels"
     Title="{Binding Title}"
-    Width="525"
+    Width="600"
     Height="350"
     d:DataContext="{d:DesignInstance viewModels:MainWindowViewModel}"
     prism:ViewModelLocator.AutoWireViewModel="True"
+    Background="{StaticResource DeepBackgroundBrush}"
     mc:Ignorable="d">
 
     <Grid Margin="15">
+
+        <Grid.Resources>
+            <Style BasedOn="{StaticResource {x:Type TextBlock}}" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource CommonForegroundBrush}" />
+            </Style>
+
+            <Style BasedOn="{StaticResource {x:Type TextBox}}" TargetType="TextBox">
+                <Setter Property="Foreground" Value="{StaticResource CommonForegroundBrush}" />
+            </Style>
+        </Grid.Resources>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*" />
             <ColumnDefinition Width="1*" />
@@ -69,15 +80,19 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <StackPanel
+                Grid.Row="0"
+                Margin="0,0,0,20"
+                HorizontalAlignment="Center">
                 <TextBlock
                     FontSize="12"
-                    Foreground="Gray"
+                    Foreground="{StaticResource CommonForegroundBrush}"
+                    Opacity="0.6"
                     Text="総保有ポイント" />
                 <TextBlock
                     FontSize="32"
                     FontWeight="Bold"
-                    Foreground="DarkGreen"
+                    Foreground="{StaticResource AccentLightBrush}"
                     Text="1000 pt" />
             </StackPanel>
 
@@ -86,10 +101,12 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
+
                 <TextBlock
                     Grid.Row="0"
                     Margin="0,0,0,5"
                     FontWeight="Bold"
+                    Foreground="{StaticResource CommonForegroundBrush}"
                     Text="ポイント履歴" />
                 <ListBox x:Name="PointHistoryListBox" Grid.Row="1" />
             </Grid>
