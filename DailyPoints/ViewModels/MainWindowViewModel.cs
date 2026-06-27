@@ -33,6 +33,8 @@ public class MainWindowViewModel : BindableBase
     private string inputTasksText = string.Empty;
     private int point = 1000;
     private string inputDeductionTasksText = string.Empty;
+    private int expensePrice;
+    private string expenseDetailText = string.Empty;
 
     public MainWindowViewModel(PointService pointService)
     {
@@ -52,6 +54,14 @@ public class MainWindowViewModel : BindableBase
     {
         get => inputDeductionTasksText;
         set => SetProperty(ref inputDeductionTasksText, value);
+    }
+
+    public int ExpensePrice { get => expensePrice; set => SetProperty(ref expensePrice, value); }
+
+    public string ExpenseDetailText
+    {
+        get => expenseDetailText;
+        set => SetProperty(ref expenseDetailText, value);
     }
 
     public DelegateCommand CsvToPointCommand => new DelegateCommand(() =>
@@ -87,6 +97,29 @@ public class MainWindowViewModel : BindableBase
         Point += succeeds.Sum(t => t.Points);
 
         InputDeductionTasksText = string.Empty;
+        UpdatePointTransactions();
+    });
+
+    public DelegateCommand PointDeductionFromExpenseCommand => new DelegateCommand(() =>
+    {
+        if (ExpensePrice <= 0)
+        {
+            return;
+        }
+
+        var input = ExpensePrice;
+        var item = new MoneyExpenseItem
+        {
+            Description = ExpenseDetailText,
+            Amount = input,
+        };
+
+        var transaction = pointCalculator.Deduct(item);
+        pointService.Add(transaction);
+        Point += transaction.Points;
+
+        ExpensePrice = 0;
+        ExpenseDetailText = string.Empty;
         UpdatePointTransactions();
     });
 

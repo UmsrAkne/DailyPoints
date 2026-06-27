@@ -35,5 +35,17 @@ namespace DailyPoints.Core
 
             return pt;
         }
+
+        public PointTransaction Deduct(MoneyExpenseItem item)
+        {
+            var pt = new PointTransaction
+            {
+                Type = "MoneyExpense",
+                Points = -item.Amount,
+                Details = new PointSourceDetails() { MoneyExpense = item, },
+            };
+
+            return pt;
+        }
     }
 }

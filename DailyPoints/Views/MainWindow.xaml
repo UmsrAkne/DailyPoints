@@ -74,13 +74,22 @@
 
             <TabItem Header="現実の出費">
                 <StackPanel Margin="10">
-                    <TextBlock Text="買ったもの・やりたいこと" />
-                    <TextBox x:Name="ExpenseNameTextBox" Margin="0,5,0,10" />
+                    <TextBlock Text="買ったものなど" />
+                    <TextBox
+                        x:Name="ExpenseNameTextBox"
+                        Margin="0,5,0,10"
+                        Text="{Binding ExpenseDetailText, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Text="金額 (￥)" />
-                    <TextBox x:Name="ExpensePriceTextBox" Margin="0,5,0,15" />
+                    <TextBox
+                        x:Name="ExpensePriceTextBox"
+                        Margin="0,5,0,15"
+                        Text="{Binding ExpensePrice, UpdateSourceTrigger=PropertyChanged}" />
 
-                    <Button HorizontalAlignment="Right" Content="ポイントを消費して許可" />
+                    <Button
+                        HorizontalAlignment="Right"
+                        Command="{Binding PointDeductionFromExpenseCommand}"
+                        Content="ポイントを消費して許可" />
                 </StackPanel>
             </TabItem>
         </TabControl>
@@ -127,7 +136,7 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type databases:PointTransaction}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Width="80" Text="{Binding TaskItem.IssueId}" />
+                                <TextBlock Width="120" Text="{Binding HeaderText}" />
                                 <TextBlock Text="{Binding Points}" />
                             </StackPanel>
                         </DataTemplate>
