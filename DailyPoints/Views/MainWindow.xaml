@@ -51,16 +51,24 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="セルフ入力">
-                <StackPanel Margin="10">
-                    <TextBlock Text="タスク名" />
-                    <TextBox x:Name="SelfTaskNameTextBox" Margin="0,5,0,10" />
-
-                    <TextBlock Text="時間 (分)" />
-                    <TextBox x:Name="SelfTaskTimeTextBox" Margin="0,5,0,15" />
-
-                    <Button HorizontalAlignment="Right" Content="タスクを記録してポイント獲得" />
-                </StackPanel>
+            <TabItem Header="ポイントを消費">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBox
+                        Grid.Row="0"
+                        AcceptsReturn="True"
+                        Text="{Binding InputDeductionTasksText, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="JiraやRedmineのCSVを貼り付け" />
+                    <Button
+                        Grid.Row="1"
+                        Margin="0,10,0,0"
+                        HorizontalAlignment="Right"
+                        Command="{Binding PointDeductionCommand}"
+                        Content="趣味タスクに対してポイントを消費" />
+                </Grid>
             </TabItem>
 
             <TabItem Header="現実の出費">

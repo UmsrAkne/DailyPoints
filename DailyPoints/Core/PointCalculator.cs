@@ -23,5 +23,17 @@ namespace DailyPoints.Core
             pt.Points += (int)item.Estimation.TotalMinutes * 10;
             return pt;
         }
+
+        public PointTransaction Deduct(TaskItem item)
+        {
+            var pt = new PointTransaction
+            {
+                TaskItem = item,
+                Type = "Deduction",
+                Points = -((int)item.ActualTime.TotalMinutes * 9),
+            };
+
+            return pt;
+        }
     }
 }
