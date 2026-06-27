@@ -16,7 +16,7 @@ namespace DailyPoints.Core
         {
             var pt = new PointTransaction
             {
-                TaskItem = item,
+                Details = new PointSourceDetails() { TaskItem = item, },
             };
 
             pt.Points += (int)(item.ActualTime.TotalMinutes * 1.1) * 10;
@@ -28,9 +28,9 @@ namespace DailyPoints.Core
         {
             var pt = new PointTransaction
             {
-                TaskItem = item,
                 Type = "Deduction",
                 Points = -((int)item.ActualTime.TotalMinutes * 9),
+                Details = new PointSourceDetails() { TaskItem = item, },
             };
 
             return pt;

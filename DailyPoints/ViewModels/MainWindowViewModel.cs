@@ -116,7 +116,7 @@ public class MainWindowViewModel : BindableBase
     {
         // 1. ループ内での全件全探索を避けるため、既存のIssueIdをHashSetにまとめておく（O(1)で検証可能にする）
         var existingIssueIds = pointService.GetAll()
-            .Select(t => t.TaskItem.IssueId)
+            .Select(t => t.Details.TaskItem.IssueId)
             .ToHashSet();
 
         var addedTransactions = new List<PointTransaction>();
@@ -124,7 +124,7 @@ public class MainWindowViewModel : BindableBase
         foreach (var transaction in transactions)
         {
             // 2. 既に同じIssueIdが存在する場合はスキップ（重複登録の防止）
-            if (existingIssueIds.Contains(transaction.TaskItem.IssueId))
+            if (existingIssueIds.Contains(transaction.Details.TaskItem.IssueId))
             {
                 continue;
             }
@@ -133,7 +133,7 @@ public class MainWindowViewModel : BindableBase
             addedTransactions.Add(transaction);
 
             // 3. 次のループで同じ引数内の重複にも対応できるよう、HashSetにも追加しておく
-            existingIssueIds.Add(transaction.TaskItem.IssueId);
+            existingIssueIds.Add(transaction.Details.TaskItem.IssueId);
         }
 
         return addedTransactions;

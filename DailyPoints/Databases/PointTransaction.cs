@@ -1,5 +1,4 @@
 ﻿using System;
-using DailyPoints.Models;
 
 namespace DailyPoints.Databases
 {
@@ -13,6 +12,6 @@ namespace DailyPoints.Databases
 
         public int Points { get; set; }
 
-        public TaskItem TaskItem { get; set; }
+        public virtual PointSourceDetails Details { get; set; }
     }
 }
