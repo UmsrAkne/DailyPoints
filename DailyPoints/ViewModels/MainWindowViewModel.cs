@@ -9,6 +9,7 @@ using CsvHelper.Configuration;
 using DailyPoints.Models;
 using DailyPoints.Utils;
 using DailyPoints.Utils.Csv;
+using Prism.Commands;
 using Prism.Mvvm;
 
 namespace DailyPoints.ViewModels;
@@ -24,6 +25,8 @@ public class MainWindowViewModel : BindableBase
     #endif
 
     private readonly AppVersionInfo appVersionInfo = new();
+    private string inputTasksText = string.Empty;
+    private int point = 1000;
 
     public MainWindowViewModel()
     {
@@ -31,6 +34,23 @@ public class MainWindowViewModel : BindableBase
     }
 
     public string Title => appVersionInfo.Title;
+
+    public int Point { get => point; set => SetProperty(ref point, value); }
+
+    public string InputTasksText { get => inputTasksText; set => SetProperty(ref inputTasksText, value); }
+
+    public DelegateCommand CsvToPointCommand => new DelegateCommand(() =>
+    {
+        if (string.IsNullOrWhiteSpace(InputTasksText))
+        {
+            return;
+        }
+
+        var input = InputTasksText;
+        var items = CsvToTaskItems(input);
+
+        InputTasksText = string.Empty;
+    });
 
     private List<TaskItem> CsvToTaskItems(string csvContent)
     {
