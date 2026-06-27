@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using CsvHelper;
 using CsvHelper.Configuration;
+using DailyPoints.Core;
 using DailyPoints.Models;
 using DailyPoints.Utils;
 using DailyPoints.Utils.Csv;
@@ -25,6 +26,7 @@ public class MainWindowViewModel : BindableBase
     #endif
 
     private readonly AppVersionInfo appVersionInfo = new();
+    private readonly PointCalculator pointCalculator = new();
     private string inputTasksText = string.Empty;
     private int point = 1000;
 
@@ -48,6 +50,9 @@ public class MainWindowViewModel : BindableBase
 
         var input = InputTasksText;
         var items = CsvToTaskItems(input);
+
+        var pts = pointCalculator.Calculate(items);
+        Point += pts;
 
         InputTasksText = string.Empty;
     });
