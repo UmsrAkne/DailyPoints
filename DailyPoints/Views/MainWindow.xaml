@@ -3,16 +3,147 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:databases="clr-namespace:DailyPoints.Databases"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:prism="http://prismlibrary.com/"
     xmlns:viewModels="clr-namespace:DailyPoints.ViewModels"
     Title="{Binding Title}"
-    Width="525"
+    Width="600"
     Height="350"
     d:DataContext="{d:DesignInstance viewModels:MainWindowViewModel}"
     prism:ViewModelLocator.AutoWireViewModel="True"
+    Background="{StaticResource DeepBackgroundBrush}"
     mc:Ignorable="d">
-    <Grid>
-        <ContentControl prism:RegionManager.RegionName="ContentRegion" />
+
+    <Grid Margin="15">
+
+        <Grid.Resources>
+            <Style BasedOn="{StaticResource {x:Type TextBlock}}" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource CommonForegroundBrush}" />
+            </Style>
+
+            <Style BasedOn="{StaticResource {x:Type TextBox}}" TargetType="TextBox">
+                <Setter Property="Foreground" Value="{StaticResource CommonForegroundBrush}" />
+            </Style>
+        </Grid.Resources>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="1*" />
+        </Grid.ColumnDefinitions>
+
+        <TabControl Grid.Column="0" Margin="0,0,15,0">
+            <TabItem Header="CSV一括変換">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBox
+                        Grid.Row="0"
+                        AcceptsReturn="True"
+                        Text="{Binding InputTasksText, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="JiraやRedmineのCSVを貼り付け" />
+                    <Button
+                        Grid.Row="1"
+                        Margin="0,10,0,0"
+                        HorizontalAlignment="Right"
+                        Command="{Binding CsvToPointCommand}"
+                        Content="CSVからポイントに変換" />
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="ポイントを消費">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBox
+                        Grid.Row="0"
+                        AcceptsReturn="True"
+                        Text="{Binding InputDeductionTasksText, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="JiraやRedmineのCSVを貼り付け" />
+                    <Button
+                        Grid.Row="1"
+                        Margin="0,10,0,0"
+                        HorizontalAlignment="Right"
+                        Command="{Binding PointDeductionCommand}"
+                        Content="趣味タスクに対してポイントを消費" />
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="現実の出費">
+                <StackPanel Margin="10">
+                    <TextBlock Text="買ったものなど" />
+                    <TextBox
+                        x:Name="ExpenseNameTextBox"
+                        Margin="0,5,0,10"
+                        Text="{Binding ExpenseDetailText, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Text="金額 (￥)" />
+                    <TextBox
+                        x:Name="ExpensePriceTextBox"
+                        Margin="0,5,0,15"
+                        Text="{Binding ExpensePrice, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <Button
+                        HorizontalAlignment="Right"
+                        Command="{Binding PointDeductionFromExpenseCommand}"
+                        Content="ポイントを消費して許可" />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel
+                Grid.Row="0"
+                Margin="0,0,0,20"
+                HorizontalAlignment="Center">
+                <TextBlock
+                    FontSize="12"
+                    Foreground="{StaticResource CommonForegroundBrush}"
+                    Opacity="0.6"
+                    Text="総保有ポイント" />
+                <TextBlock
+                    FontSize="32"
+                    FontWeight="Bold"
+                    Foreground="{StaticResource AccentLightBrush}"
+                    Text="{Binding Point, StringFormat={}{0:N0} pts}" />
+            </StackPanel>
+
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock
+                    Grid.Row="0"
+                    Margin="0,0,0,5"
+                    FontWeight="Bold"
+                    Foreground="{StaticResource CommonForegroundBrush}"
+                    Text="ポイント履歴" />
+
+                <ListBox
+                    x:Name="PointHistoryListBox"
+                    Grid.Row="1"
+                    ItemsSource="{Binding PointTransactions}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type databases:PointTransaction}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Width="120" Text="{Binding HeaderText}" />
+                                <TextBlock Text="{Binding Points}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Grid>
+
     </Grid>
 </Window>

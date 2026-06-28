@@ -1,7 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Linq;
+using CsvHelper;
+using CsvHelper.Configuration;
+using DailyPoints.Core;
+using DailyPoints.Databases;
+using DailyPoints.Models;
 using DailyPoints.Utils;
+using DailyPoints.Utils.Csv;
+using Prism.Commands;
 using Prism.Mvvm;
 
 namespace DailyPoints.ViewModels;
@@ -17,13 +28,155 @@ public class MainWindowViewModel : BindableBase
     #endif
 
     private readonly AppVersionInfo appVersionInfo = new();
+    private readonly PointCalculator pointCalculator = new();
+    private readonly PointService pointService;
+    private string inputTasksText = string.Empty;
+    private int point = 1000;
+    private string inputDeductionTasksText = string.Empty;
+    private int expensePrice;
+    private string expenseDetailText = string.Empty;
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(PointService pointService)
     {
+        this.pointService = pointService;
         SetupDummyData();
     }
 
     public string Title => appVersionInfo.Title;
+
+    public int Point { get => point; set => SetProperty(ref point, value); }
+
+    public ObservableCollection<PointTransaction> PointTransactions { get; set; } = new ();
+
+    public string InputTasksText { get => inputTasksText; set => SetProperty(ref inputTasksText, value); }
+
+    public string InputDeductionTasksText
+    {
+        get => inputDeductionTasksText;
+        set => SetProperty(ref inputDeductionTasksText, value);
+    }
+
+    public int ExpensePrice { get => expensePrice; set => SetProperty(ref expensePrice, value); }
+
+    public string ExpenseDetailText
+    {
+        get => expenseDetailText;
+        set => SetProperty(ref expenseDetailText, value);
+    }
+
+    public DelegateCommand CsvToPointCommand => new DelegateCommand(() =>
+    {
+        if (string.IsNullOrWhiteSpace(InputTasksText))
+        {
+            return;
+        }
+
+        var input = InputTasksText;
+        var items = CsvToTaskItems(input);
+
+        var transactions = items.Select(t => pointCalculator.Calculate(t));
+        var succeeds = TryAddPointTransactions(transactions);
+        Point += succeeds.Sum(t => t.Points);
+
+        InputTasksText = string.Empty;
+        UpdatePointTransactions();
+    });
+
+    public DelegateCommand PointDeductionCommand => new DelegateCommand(() =>
+    {
+        if (string.IsNullOrWhiteSpace(InputDeductionTasksText))
+        {
+            return;
+        }
+
+        var input = InputDeductionTasksText;
+        var items = CsvToTaskItems(input);
+
+        var transactions = items.Select(t => pointCalculator.Deduct(t));
+        var succeeds = TryAddPointTransactions(transactions);
+        Point += succeeds.Sum(t => t.Points);
+
+        InputDeductionTasksText = string.Empty;
+        UpdatePointTransactions();
+    });
+
+    public DelegateCommand PointDeductionFromExpenseCommand => new DelegateCommand(() =>
+    {
+        if (ExpensePrice <= 0)
+        {
+            return;
+        }
+
+        var input = ExpensePrice;
+        var item = new MoneyExpenseItem
+        {
+            Description = ExpenseDetailText,
+            Amount = input,
+        };
+
+        var transaction = pointCalculator.Deduct(item);
+        pointService.Add(transaction);
+        Point += transaction.Points;
+
+        ExpensePrice = 0;
+        ExpenseDetailText = string.Empty;
+        UpdatePointTransactions();
+    });
+
+    private List<TaskItem> CsvToTaskItems(string csvContent)
+    {
+        var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            HasHeaderRecord = true,
+            TrimOptions = TrimOptions.Trim,
+        };
+
+        using var reader = new StringReader(csvContent);
+        using var csv = new CsvReader(reader, config);
+
+        csv.Context.RegisterClassMap<TaskItemMap>();
+
+        var records = csv.GetRecords<TaskItem>().ToList();
+        return records;
+    }
+
+    /// <summary>
+    /// 未登録のポイント取引データのみを抽出し、データベースに一括で追加します。
+    /// </summary>
+    /// <param name="transactions">追加を試みるポイント取引データのリスト</param>
+    /// <returns>重複がなく、正常に追加されたポイント取引データのリスト</returns>
+    private IEnumerable<PointTransaction> TryAddPointTransactions(IEnumerable<PointTransaction> transactions)
+    {
+        // 1. ループ内での全件全探索を避けるため、既存のIssueIdをHashSetにまとめておく（O(1)で検証可能にする）
+        var existingIssueIds = pointService.GetAll()
+            .Select(t => t.Details.TaskItem.IssueId)
+            .ToHashSet();
+
+        var addedTransactions = new List<PointTransaction>();
+
+        foreach (var transaction in transactions)
+        {
+            // 2. 既に同じIssueIdが存在する場合はスキップ（重複登録の防止）
+            if (existingIssueIds.Contains(transaction.Details.TaskItem.IssueId))
+            {
+                continue;
+            }
+
+            pointService.Add(transaction);
+            addedTransactions.Add(transaction);
+
+            // 3. 次のループで同じ引数内の重複にも対応できるよう、HashSetにも追加しておく
+            existingIssueIds.Add(transaction.Details.TaskItem.IssueId);
+        }
+
+        return addedTransactions;
+    }
+
+    private void UpdatePointTransactions()
+    {
+        PointTransactions.Clear();
+        PointTransactions.AddRange(pointService.GetAll().OrderBy(t => t.Date));
+    }
 
     [Conditional("DEBUG")]
     private void SetupDummyData()
