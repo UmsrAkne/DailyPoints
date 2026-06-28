@@ -13,5 +13,7 @@ namespace DailyPoints.Models
         public TimeSpan Estimation { get; set; } // TimeSpan型
 
         public TimeSpan ActualTime { get; set; } // TimeSpan型
+
+        public int Rate { get; set; } = 100;
     }
 }
