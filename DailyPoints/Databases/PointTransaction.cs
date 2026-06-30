@@ -1,4 +1,5 @@
 ﻿using System;
+using DailyPoints.Models;
 
 namespace DailyPoints.Databases
 {
@@ -12,23 +13,22 @@ namespace DailyPoints.Databases
 
         public int Points { get; set; }
 
-        public virtual PointSourceDetails Details { get; set; }
+        public TaskItem TaskItem { get; set; }
+
+        public MoneyExpenseItem MoneyExpenseItem { get; set; }
 
         public string HeaderText
         {
             get
             {
-                if (Details == null)
+                if (TaskItem == null && MoneyExpenseItem == null)
                 {
                     return string.Empty;
                 }
 
-                if (Details.MoneyExpense != null)
-                {
-                    return Type;
-                }
-
-                return Details.TaskItem.IssueId;
+                return TaskItem != null
+                    ? TaskItem.IssueId
+                    : MoneyExpenseItem.Description;
             }
         }
     }
