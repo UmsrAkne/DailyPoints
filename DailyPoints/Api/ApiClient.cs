@@ -1,0 +1,163 @@
+﻿using System;
+using System.Diagnostics;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using DailyPoints.Databases;
+using DailyPoints.Models;
+using DailyPoints.Utils;
+
+namespace DailyPoints.Api
+{
+    public sealed class ApiClient : IDisposable
+    {
+        private const string BaseUrl = "http://127.0.0.1:18000";
+
+        private readonly HttpClient httpClient;
+        private readonly AppSettings appSettings;
+        private readonly SemaphoreSlim sshLock = new SemaphoreSlim(1, 1); // 複数スレッドでの同時起動を防ぐ
+        private Process sshProcess;
+
+        public ApiClient(AppSettings appSettings)
+        {
+            httpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(10),
+            };
+
+            this.appSettings = appSettings;
+        }
+
+        public async Task<string> GetPointTransactionsAsync(CancellationToken ct = default)
+        {
+            await EnsureSshTunnelAsync(ct);
+            var url = $"{BaseUrl}/api/transactions";
+            var result = await GetAsync(url, ct);
+            Console.WriteLine(result);
+            return result;
+        }
+
+        public async Task<string> PostTaskItemAsync(TaskItem taskItem, CancellationToken ct = default)
+        {
+            await EnsureSshTunnelAsync(ct);
+            return string.Empty;
+        }
+
+        public async Task<string> PostMoneyExpenseItemAsync(MoneyExpenseItem moneyExpenseItem, CancellationToken ct = default)
+        {
+            await EnsureSshTunnelAsync(ct);
+            return string.Empty;
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (sshProcess is { HasExited: false, })
+                {
+                    sshProcess.Kill(true);
+                    sshProcess.Dispose();
+                }
+            }
+            catch
+            {
+                /* 無視 */
+            }
+
+            sshLock.Dispose();
+            httpClient.Dispose();
+        }
+
+        private async Task PostAsync(string url, HttpContent content, CancellationToken ct)
+        {
+            for (var i = 0; i < 3; i++)
+            {
+                try
+                {
+                    using var response = await httpClient.PostAsync(url, content, ct);
+
+                    // 409 Conflict (IntegrityError) のハンドリングが必要な場合はここで行う
+                    response.EnsureSuccessStatusCode();
+                    return;
+                }
+                catch (HttpRequestException) when (i < 2)
+                {
+                    await Task.Delay(1000, ct);
+                    await EnsureSshTunnelAsync(ct);
+                }
+            }
+
+            throw new Exception("サーバーへのソース追加に失敗しました。");
+        }
+
+        private async Task<string> GetAsync(string url, CancellationToken ct)
+        {
+            for (var i = 0; i < 3; i++)
+            {
+                try
+                {
+                    using var response = await httpClient.GetAsync(url, ct);
+                    response.EnsureSuccessStatusCode();
+                    return await response.Content.ReadAsStringAsync(ct);
+                }
+                catch (HttpRequestException) when (i < 2)
+                {
+                    // トンネルが開通するのを少し待ってリトライ
+                    await Task.Delay(1000, ct);
+                    await EnsureSshTunnelAsync(ct);
+                }
+            }
+
+            throw new Exception("SSHトンネル経由での接続に失敗しました。");
+        }
+
+        private async Task EnsureSshTunnelAsync(CancellationToken ct)
+        {
+            // すでにプロセスが動いていれば何もしない
+            if (sshProcess is { HasExited: false, })
+            {
+                return;
+            }
+
+            await sshLock.WaitAsync(ct);
+            try
+            {
+                // ロックを待っている間に別のスレッドが起動完了している可能性をチェック
+                if (sshProcess is { HasExited: false, })
+                {
+                    return;
+                }
+
+                var options = new[]
+                {
+                    "-N",
+                    "-L 18000:127.0.0.1:18000",
+                    "-o ConnectTimeout=5",
+                    "-o ExitOnForwardFailure=yes",
+                    "-o ServerAliveInterval=15",
+                    "-o StrictHostKeyChecking=no",
+                };
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "ssh",
+                    Arguments = $"{string.Join(" ", options)} {appSettings.SshUserName}",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardError = true,
+                };
+
+                sshProcess = Process.Start(startInfo)
+                             ?? throw new InvalidOperationException("Failed to start ssh process");
+
+                // SSHプロセスが起動してから、ポート転送が利用可能になるまで少し待つ
+                // 本来はポートのリスニング状態をチェックするのが確実ですが、簡易的には1〜2秒待機します
+                await Task.Delay(1500, ct);
+            }
+            finally
+            {
+                sshLock.Release();
+            }
+        }
+    }
+}

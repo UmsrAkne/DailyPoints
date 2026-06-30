@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using CsvHelper;
 using CsvHelper.Configuration;
+using DailyPoints.Api;
 using DailyPoints.Core;
 using DailyPoints.Databases;
 using DailyPoints.Models;
@@ -30,6 +31,7 @@ public class MainWindowViewModel : BindableBase
     private readonly AppVersionInfo appVersionInfo = new();
     private readonly PointCalculator pointCalculator = new();
     private readonly PointService pointService;
+    private readonly ApiClient apiClient;
     private string inputTasksText = string.Empty;
     private int point = 1000;
     private string inputDeductionTasksText = string.Empty;
@@ -38,6 +40,7 @@ public class MainWindowViewModel : BindableBase
 
     public MainWindowViewModel(PointService pointService)
     {
+        apiClient = new ApiClient(AppSettings.Load());
         this.pointService = pointService;
         SetupDummyData();
     }
