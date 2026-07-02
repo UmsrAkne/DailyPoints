@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using DailyPoints.Databases;
@@ -30,13 +32,40 @@ namespace DailyPoints.Api
             this.appSettings = appSettings;
         }
 
-        public async Task<string> GetPointTransactionsAsync(CancellationToken ct = default)
+        public async Task<List<PointTransaction>> GetPointTransactionsAsync(CancellationToken ct = default)
         {
+            // 1. SSHトンネルの確立を保証
             await EnsureSshTunnelAsync(ct);
-            var url = $"{BaseUrl}/api/transactions";
-            var result = await GetAsync(url, ct);
-            Console.WriteLine(result);
-            return result;
+
+            // 2. エンドポイントのURLを構築
+            const string requestUrl = $"{BaseUrl}/api/transactions";
+
+            // 3. トンネル経由でサーバーからGET
+            using var response = await httpClient.GetAsync(requestUrl, ct);
+
+            // 4. ステータスコードの検証
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorReason = await response.Content.ReadAsStringAsync(ct);
+                throw new HttpRequestException($"サーバーエラー: {response.StatusCode} - {errorReason}");
+            }
+
+            // 5. JSONのデシリアライズ設定
+            // JSONのキーが "sequence_number" や "task_item" のようになっているため、
+            // SnakeCaseLower を指定するとC#のパスカルケースプロパティに自動マッピングされます。
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+            };
+
+            // レスポンスのJSONストリームから直接デシリアライズしてメモリ効率を最適化
+            await using var responseStream = await response.Content.ReadAsStreamAsync(ct);
+
+            // ルートの { "transactions": [...] } を受けるためのラッパー型をその場で定義してデシリアライズ
+            var result = await JsonSerializer.DeserializeAsync<PointTransactionResponseWrapper>(responseStream, jsonOptions, ct);
+
+            // ヌルチェックをしてリストを返却
+            return result?.Transactions ?? new List<PointTransaction>();
         }
 
         public async Task<string> PostTaskItemAsync(TaskItem taskItem, CancellationToken ct = default)
@@ -196,6 +225,12 @@ namespace DailyPoints.Api
             {
                 sshLock.Release();
             }
+        }
+
+        private class PointTransactionResponseWrapper
+        {
+            [JsonPropertyName("transactions")]
+            public List<PointTransaction> Transactions { get; set; } = new();
         }
     }
 }
