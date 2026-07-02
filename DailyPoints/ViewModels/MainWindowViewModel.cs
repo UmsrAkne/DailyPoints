@@ -80,26 +80,22 @@ public class MainWindowViewModel : BindableBase
 
             var input = InputTasksText;
 
-            try
+            var items = CsvToTaskItems(input);
+            foreach (var taskItem in items)
             {
-                var items = CsvToTaskItems(input);
-                foreach (var taskItem in items)
+                try
                 {
                     var response = await apiClient.PostTaskItemAsync(taskItem);
                     await Task.Delay(40);
                     Console.WriteLine(response);
                 }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
             }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-                throw;
-            }
-            finally
-            {
-                InputTasksText = string.Empty;
-                UpdatePointTransactions();
-            }
+
+            UpdatePointTransactions();
         });
 
     public DelegateCommand PointDeductionCommand => new DelegateCommand(() =>
