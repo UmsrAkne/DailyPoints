@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using DailyPoints.Databases;
@@ -39,8 +41,44 @@ namespace DailyPoints.Api
 
         public async Task<string> PostTaskItemAsync(TaskItem taskItem, CancellationToken ct = default)
         {
+            // 1. SSHトンネルの確立を保証
             await EnsureSshTunnelAsync(ct);
-            return string.Empty;
+
+            // 2. サーバー側の型（TaskItemCreate）に合わせた匿名オブジェクトを作成
+            // TimeSpan型から「総分数（整数）」へ変換します
+            var payload = new
+            {
+                id = taskItem.Id.ToString(),
+                issueId = taskItem.IssueId,
+                summary = taskItem.Summary,
+                estimation = (int)taskItem.Estimation.TotalMinutes, // 総分数に変換
+                actualTime = (int)taskItem.ActualTime.TotalMinutes, // 総分数に変換
+                rate = taskItem.Rate,
+            };
+
+            // 3. JSONにシリアライズ
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+            var jsonContent = JsonSerializer.Serialize(payload, jsonOptions);
+            using var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            // 4. トンネル経由（ポート18000）でサーバーへPOST
+            // ※エンドポイントのパス（例: /tasks）は環境に合わせて変更してください
+            const string requestUrl = $"{BaseUrl}/api/tasks";
+
+            using var response = await httpClient.PostAsync(requestUrl, content, ct);
+
+            // 5. ステータスコードの検証とレスポンスの返却
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorReason = await response.Content.ReadAsStringAsync(ct);
+                throw new HttpRequestException($"サーバーエラー: {response.StatusCode} - {errorReason}");
+            }
+
+            // サーバーから返ってきた文字列（IDやステータスなど）を返す
+            return await response.Content.ReadAsStringAsync(ct);
         }
 
         public async Task<string> PostMoneyExpenseItemAsync(MoneyExpenseItem moneyExpenseItem, CancellationToken ct = default)

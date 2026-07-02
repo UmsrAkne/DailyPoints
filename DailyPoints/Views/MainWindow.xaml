@@ -47,7 +47,7 @@
                         Grid.Row="1"
                         Margin="0,10,0,0"
                         HorizontalAlignment="Right"
-                        Command="{Binding CsvToPointCommand}"
+                        Command="{Binding CsvToPointAsyncCommand}"
                         Content="CSVからポイントに変換" />
                 </Grid>
             </TabItem>

@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
 using CsvHelper;
 using CsvHelper.Configuration;
 using DailyPoints.Api;
@@ -37,6 +39,7 @@ public class MainWindowViewModel : BindableBase
     private string inputDeductionTasksText = string.Empty;
     private int expensePrice;
     private string expenseDetailText = string.Empty;
+    private AsyncRelayCommand csvToPointCommand;
 
     public MainWindowViewModel(PointService pointService)
     {
@@ -67,21 +70,37 @@ public class MainWindowViewModel : BindableBase
         set => SetProperty(ref expenseDetailText, value);
     }
 
-    public DelegateCommand CsvToPointCommand => new DelegateCommand(() =>
-    {
-        if (string.IsNullOrWhiteSpace(InputTasksText))
+    public AsyncRelayCommand CsvToPointAsyncCommand =>
+        csvToPointCommand ??= new AsyncRelayCommand(async () =>
         {
-            return;
-        }
+            if (string.IsNullOrWhiteSpace(InputTasksText))
+            {
+                return;
+            }
 
-        var input = InputTasksText;
+            var input = InputTasksText;
 
-        // var items = CsvToTaskItems(input);
-        // PointTransaction はサーバー側で作成して追加する仕様に変更。
-        // items の状態でサーバーに送る。
-        InputTasksText = string.Empty;
-        UpdatePointTransactions();
-    });
+            try
+            {
+                var items = CsvToTaskItems(input);
+                foreach (var taskItem in items)
+                {
+                    var response = await apiClient.PostTaskItemAsync(taskItem);
+                    await Task.Delay(40);
+                    Console.WriteLine(response);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                throw;
+            }
+            finally
+            {
+                InputTasksText = string.Empty;
+                UpdatePointTransactions();
+            }
+        });
 
     public DelegateCommand PointDeductionCommand => new DelegateCommand(() =>
     {
