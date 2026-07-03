@@ -21,6 +21,15 @@ namespace DailyPoints.Databases
         [JsonPropertyName("task_item")]
         public TaskItem TaskItem { get; set; }
 
+        [JsonPropertyName("version")]
+        public string AppVersion { get; set; }
+
+        [JsonPropertyName("balance")]
+        public int Balance { get; set; }
+
+        [JsonPropertyName("sequence_number")]
+        public int SequenceNumber { get; set; }
+
         [JsonPropertyName("money_expense_item")]
         public MoneyExpenseItem MoneyExpenseItem { get; set; }
 

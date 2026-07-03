@@ -78,8 +78,7 @@ public class MainWindowViewModel : BindableBase
             PointTransactions.Clear();
             PointTransactions.AddRange(list);
 
-            // 現在の保有ポイントを表示する
-            // Point = PointTransactions.FirstOrDefault()?.Points ?? 0;
+            Point = PointTransactions.FirstOrDefault()?.Balance ?? 0;
         });
 
     public AsyncRelayCommand CsvToPointAsyncCommand =>
