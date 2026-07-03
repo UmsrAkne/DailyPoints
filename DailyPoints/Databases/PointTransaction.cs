@@ -1,34 +1,51 @@
 ﻿using System;
+using System.Text.Json.Serialization;
+using DailyPoints.Models;
 
 namespace DailyPoints.Databases
 {
     public class PointTransaction
     {
+        [JsonPropertyName("id")]
         public Guid Id { get; set; } = Guid.NewGuid();
 
+        [JsonPropertyName("category")]
         public string Type { get; set; } = "Addition";
 
+        [JsonPropertyName("date")]
         public DateTime Date { get; set; } = DateTime.Now;
 
+        [JsonPropertyName("points")]
         public int Points { get; set; }
 
-        public virtual PointSourceDetails Details { get; set; }
+        [JsonPropertyName("task_item")]
+        public TaskItem TaskItem { get; set; }
 
+        [JsonPropertyName("version")]
+        public string AppVersion { get; set; }
+
+        [JsonPropertyName("balance")]
+        public int Balance { get; set; }
+
+        [JsonPropertyName("sequence_number")]
+        public int SequenceNumber { get; set; }
+
+        [JsonPropertyName("money_expense_item")]
+        public MoneyExpenseItem MoneyExpenseItem { get; set; }
+
+        [JsonIgnore]
         public string HeaderText
         {
             get
             {
-                if (Details == null)
+                if (TaskItem == null && MoneyExpenseItem == null)
                 {
                     return string.Empty;
                 }
 
-                if (Details.MoneyExpense != null)
-                {
-                    return Type;
-                }
-
-                return Details.TaskItem.IssueId;
+                return TaskItem != null
+                    ? TaskItem.IssueId
+                    : MoneyExpenseItem.Description;
             }
         }
     }

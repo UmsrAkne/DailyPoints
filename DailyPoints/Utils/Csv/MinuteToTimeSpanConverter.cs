@@ -15,15 +15,39 @@ namespace DailyPoints.Utils.Csv
                 return TimeSpan.Zero;
             }
 
-            // 正規表現で数値部分だけを抽出 ("20m" や "20" -> "20")
-            var match = Regex.Match(text, @"\d+");
-            if (match.Success && double.TryParse(match.Value, out var minutes))
+            // 「数値 + h」と「数値 + m」をそれぞれオプショナル（あってもなくても良い）でキャプチャ
+            // 例: "2h 18m", "2h", "18m", "20" (単位なしは分として扱う)
+            var match = Regex.Match(text, @"(?:(?<hours>\d+)\s*h)?\s*(?:(?<minutes>\d+)\s*m?)?");
+
+            if (match.Success)
             {
-                // 抽出した数値を「分」として TimeSpan を生成
-                return TimeSpan.FromMinutes(minutes);
+                double totalMinutes = 0;
+
+                // 時間(h) 部分の抽出と換算
+                if (match.Groups["hours"].Success && double.TryParse(match.Groups["hours"].Value, out var hours))
+                {
+                    totalMinutes += hours * 60;
+                }
+
+                // 分(m) 部分の抽出
+                if (match.Groups["minutes"].Success && double.TryParse(match.Groups["minutes"].Value, out var minutes))
+                {
+                    totalMinutes += minutes;
+                }
+
+                if (totalMinutes > 0)
+                {
+                    return TimeSpan.FromMinutes(totalMinutes);
+                }
             }
 
-            return TimeSpan.Zero; // パース失敗時は 0 時間
+            // 従来のシンプルな数値のみ ("20") だった場合のフォールバック
+            if (double.TryParse(text, out var rawMinutes))
+            {
+                return TimeSpan.FromMinutes(rawMinutes);
+            }
+
+            return TimeSpan.Zero;
         }
     }
 }

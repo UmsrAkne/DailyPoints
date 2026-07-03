@@ -5,14 +5,16 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
 using CsvHelper;
 using CsvHelper.Configuration;
+using DailyPoints.Api;
 using DailyPoints.Core;
 using DailyPoints.Databases;
 using DailyPoints.Models;
 using DailyPoints.Utils;
 using DailyPoints.Utils.Csv;
-using Prism.Commands;
 using Prism.Mvvm;
 
 namespace DailyPoints.ViewModels;
@@ -30,14 +32,20 @@ public class MainWindowViewModel : BindableBase
     private readonly AppVersionInfo appVersionInfo = new();
     private readonly PointCalculator pointCalculator = new();
     private readonly PointService pointService;
+    private readonly ApiClient apiClient;
     private string inputTasksText = string.Empty;
-    private int point = 1000;
+    private int point;
     private string inputDeductionTasksText = string.Empty;
     private int expensePrice;
     private string expenseDetailText = string.Empty;
+    private AsyncRelayCommand csvToPointCommand;
+    private AsyncRelayCommand fetchPointTransactionsAsyncCommand;
+    private AsyncRelayCommand pointDeductionCommand;
+    private AsyncRelayCommand pointDeductionFromExpenseCommand;
 
     public MainWindowViewModel(PointService pointService)
     {
+        apiClient = new ApiClient(AppSettings.Load());
         this.pointService = pointService;
         SetupDummyData();
     }
@@ -64,64 +72,80 @@ public class MainWindowViewModel : BindableBase
         set => SetProperty(ref expenseDetailText, value);
     }
 
-    public DelegateCommand CsvToPointCommand => new DelegateCommand(() =>
-    {
-        if (string.IsNullOrWhiteSpace(InputTasksText))
+    public AsyncRelayCommand FetchPointTransactionsAsyncCommand =>
+        fetchPointTransactionsAsyncCommand ??= new AsyncRelayCommand(async () =>
         {
-            return;
-        }
+            await UpdatePointTransactions();
+        });
 
-        var input = InputTasksText;
-        var items = CsvToTaskItems(input);
-
-        var transactions = items.Select(t => pointCalculator.Calculate(t));
-        var succeeds = TryAddPointTransactions(transactions);
-        Point += succeeds.Sum(t => t.Points);
-
-        InputTasksText = string.Empty;
-        UpdatePointTransactions();
-    });
-
-    public DelegateCommand PointDeductionCommand => new DelegateCommand(() =>
-    {
-        if (string.IsNullOrWhiteSpace(InputDeductionTasksText))
+    public AsyncRelayCommand CsvToPointAsyncCommand =>
+        csvToPointCommand ??= new AsyncRelayCommand(async () =>
         {
-            return;
-        }
+            if (string.IsNullOrWhiteSpace(InputTasksText))
+            {
+                return;
+            }
 
-        var input = InputDeductionTasksText;
-        var items = CsvToTaskItems(input);
+            var input = InputTasksText;
 
-        var transactions = items.Select(t => pointCalculator.Deduct(t));
-        var succeeds = TryAddPointTransactions(transactions);
-        Point += succeeds.Sum(t => t.Points);
+            var items = CsvToTaskItems(input);
+            foreach (var taskItem in items)
+            {
+                try
+                {
+                    var response = await apiClient.PostTaskItemAsync(taskItem);
+                    await Task.Delay(40);
+                    Console.WriteLine(response);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            }
 
-        InputDeductionTasksText = string.Empty;
-        UpdatePointTransactions();
-    });
+            await UpdatePointTransactions();
+        });
 
-    public DelegateCommand PointDeductionFromExpenseCommand => new DelegateCommand(() =>
-    {
-        if (ExpensePrice <= 0)
+    public AsyncRelayCommand PointDeductionAsyncCommand =>
+        pointDeductionCommand ??= new AsyncRelayCommand(async () =>
         {
-            return;
-        }
+            if (string.IsNullOrWhiteSpace(InputDeductionTasksText))
+            {
+                return;
+            }
 
-        var input = ExpensePrice;
-        var item = new MoneyExpenseItem
+            var input = InputDeductionTasksText;
+
+            // var items = CsvToTaskItems(input);
+            // PointTransaction はサーバー側で作成して追加する仕様に変更。
+            // items の状態でサーバーに送る。
+            InputDeductionTasksText = string.Empty;
+            await UpdatePointTransactions();
+        });
+
+    public AsyncRelayCommand PointDeductionFromExpenseAsyncCommand =>
+        pointDeductionFromExpenseCommand ??= new AsyncRelayCommand(async () =>
         {
-            Description = ExpenseDetailText,
-            Amount = input,
-        };
+            if (ExpensePrice <= 0)
+            {
+                return;
+            }
 
-        var transaction = pointCalculator.Deduct(item);
-        pointService.Add(transaction);
-        Point += transaction.Points;
+            var input = ExpensePrice;
+            var item = new MoneyExpenseItem
+            {
+                Description = ExpenseDetailText,
+                Amount = input,
+            };
 
-        ExpensePrice = 0;
-        ExpenseDetailText = string.Empty;
-        UpdatePointTransactions();
-    });
+            var transaction = pointCalculator.Deduct(item);
+            pointService.Add(transaction);
+            Point += transaction.Points;
+
+            ExpensePrice = 0;
+            ExpenseDetailText = string.Empty;
+            await UpdatePointTransactions();
+        });
 
     private List<TaskItem> CsvToTaskItems(string csvContent)
     {
@@ -140,42 +164,13 @@ public class MainWindowViewModel : BindableBase
         return records;
     }
 
-    /// <summary>
-    /// 未登録のポイント取引データのみを抽出し、データベースに一括で追加します。
-    /// </summary>
-    /// <param name="transactions">追加を試みるポイント取引データのリスト</param>
-    /// <returns>重複がなく、正常に追加されたポイント取引データのリスト</returns>
-    private IEnumerable<PointTransaction> TryAddPointTransactions(IEnumerable<PointTransaction> transactions)
+    private async Task UpdatePointTransactions()
     {
-        // 1. ループ内での全件全探索を避けるため、既存のIssueIdをHashSetにまとめておく（O(1)で検証可能にする）
-        var existingIssueIds = pointService.GetAll()
-            .Select(t => t.Details.TaskItem.IssueId)
-            .ToHashSet();
-
-        var addedTransactions = new List<PointTransaction>();
-
-        foreach (var transaction in transactions)
-        {
-            // 2. 既に同じIssueIdが存在する場合はスキップ（重複登録の防止）
-            if (existingIssueIds.Contains(transaction.Details.TaskItem.IssueId))
-            {
-                continue;
-            }
-
-            pointService.Add(transaction);
-            addedTransactions.Add(transaction);
-
-            // 3. 次のループで同じ引数内の重複にも対応できるよう、HashSetにも追加しておく
-            existingIssueIds.Add(transaction.Details.TaskItem.IssueId);
-        }
-
-        return addedTransactions;
-    }
-
-    private void UpdatePointTransactions()
-    {
+        var list = await apiClient.GetPointTransactionsAsync();
         PointTransactions.Clear();
-        PointTransactions.AddRange(pointService.GetAll().OrderBy(t => t.Date));
+        PointTransactions.AddRange(list.OrderByDescending(t => t.SequenceNumber));
+
+        Point = PointTransactions.FirstOrDefault()?.Balance ?? 0;
     }
 
     [Conditional("DEBUG")]

@@ -2,6 +2,7 @@
     x:Class="DailyPoints.Views.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:databases="clr-namespace:DailyPoints.Databases"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -15,6 +16,12 @@
     Background="{StaticResource DeepBackgroundBrush}"
     mc:Ignorable="d">
 
+    <b:Interaction.Triggers>
+        <b:EventTrigger EventName="Loaded">
+            <b:InvokeCommandAction Command="{Binding FetchPointTransactionsAsyncCommand}" />
+        </b:EventTrigger>
+    </b:Interaction.Triggers>
+
     <Grid Margin="15">
 
         <Grid.Resources>
@@ -27,7 +34,7 @@
             </Style>
         </Grid.Resources>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="1.5*" />
             <ColumnDefinition Width="1*" />
         </Grid.ColumnDefinitions>
 
@@ -47,7 +54,7 @@
                         Grid.Row="1"
                         Margin="0,10,0,0"
                         HorizontalAlignment="Right"
-                        Command="{Binding CsvToPointCommand}"
+                        Command="{Binding CsvToPointAsyncCommand}"
                         Content="CSVからポイントに変換" />
                 </Grid>
             </TabItem>
@@ -67,7 +74,7 @@
                         Grid.Row="1"
                         Margin="0,10,0,0"
                         HorizontalAlignment="Right"
-                        Command="{Binding PointDeductionCommand}"
+                        Command="{Binding PointDeductionAsyncCommand}"
                         Content="趣味タスクに対してポイントを消費" />
                 </Grid>
             </TabItem>
@@ -88,7 +95,7 @@
 
                     <Button
                         HorizontalAlignment="Right"
-                        Command="{Binding PointDeductionFromExpenseCommand}"
+                        Command="{Binding PointDeductionFromExpenseAsyncCommand}"
                         Content="ポイントを消費して許可" />
                 </StackPanel>
             </TabItem>
@@ -136,8 +143,15 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type databases:PointTransaction}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Width="120" Text="{Binding HeaderText}" />
+                                <StackPanel.Resources>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Width" Value="70" />
+                                    </Style>
+                                </StackPanel.Resources>
+
+                                <TextBlock Text="{Binding HeaderText}" />
                                 <TextBlock Text="{Binding Points}" />
+                                <TextBlock Text="{Binding Balance}" />
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
