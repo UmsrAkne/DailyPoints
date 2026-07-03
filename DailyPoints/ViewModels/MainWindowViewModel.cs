@@ -35,11 +35,12 @@ public class MainWindowViewModel : BindableBase
     private readonly PointService pointService;
     private readonly ApiClient apiClient;
     private string inputTasksText = string.Empty;
-    private int point = 1000;
+    private int point;
     private string inputDeductionTasksText = string.Empty;
     private int expensePrice;
     private string expenseDetailText = string.Empty;
     private AsyncRelayCommand csvToPointCommand;
+    private AsyncRelayCommand fetchPointTransactionsAsyncCommand;
 
     public MainWindowViewModel(PointService pointService)
     {
@@ -69,6 +70,17 @@ public class MainWindowViewModel : BindableBase
         get => expenseDetailText;
         set => SetProperty(ref expenseDetailText, value);
     }
+
+    public AsyncRelayCommand FetchPointTransactionsAsyncCommand =>
+        fetchPointTransactionsAsyncCommand ??= new AsyncRelayCommand(async () =>
+        {
+            var list = await apiClient.GetPointTransactionsAsync();
+            PointTransactions.Clear();
+            PointTransactions.AddRange(list);
+
+            // 現在の保有ポイントを表示する
+            // Point = PointTransactions.FirstOrDefault()?.Points ?? 0;
+        });
 
     public AsyncRelayCommand CsvToPointAsyncCommand =>
         csvToPointCommand ??= new AsyncRelayCommand(async () =>
