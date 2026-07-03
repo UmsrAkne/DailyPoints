@@ -70,52 +70,21 @@ namespace DailyPoints.Api
 
         public async Task<string> PostTaskItemAsync(TaskItem taskItem, CancellationToken ct = default)
         {
-            // 1. SSHトンネルの確立を保証
-            await EnsureSshTunnelAsync(ct);
-
-            // 2. サーバー側の型（TaskItemCreate）に合わせた匿名オブジェクトを作成
-            // TimeSpan型から「総分数（整数）」へ変換します
             var payload = new
             {
                 id = taskItem.Id.ToString(),
                 issueId = taskItem.IssueId,
                 summary = taskItem.Summary,
-                estimation = (int)taskItem.Estimation.TotalMinutes, // 総分数に変換
-                actualTime = (int)taskItem.ActualTime.TotalMinutes, // 総分数に変換
+                estimation = (int)taskItem.Estimation.TotalMinutes,
+                actualTime = (int)taskItem.ActualTime.TotalMinutes,
                 rate = taskItem.Rate,
             };
 
-            // 3. JSONにシリアライズ
-            var jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            };
-            var jsonContent = JsonSerializer.Serialize(payload, jsonOptions);
-            using var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-            // 4. トンネル経由（ポート18000）でサーバーへPOST
-            // ※エンドポイントのパス（例: /tasks）は環境に合わせて変更してください
-            const string requestUrl = $"{BaseUrl}/api/tasks";
-
-            using var response = await httpClient.PostAsync(requestUrl, content, ct);
-
-            // 5. ステータスコードの検証とレスポンスの返却
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorReason = await response.Content.ReadAsStringAsync(ct);
-                throw new HttpRequestException($"サーバーエラー: {response.StatusCode} - {errorReason}");
-            }
-
-            // サーバーから返ってきた文字列（IDやステータスなど）を返す
-            return await response.Content.ReadAsStringAsync(ct);
+            return await PostJsonAsync("/api/tasks", payload, ct);
         }
 
         public async Task<string> PostMoneyExpenseAsync(MoneyExpenseItem moneyExpenseItem, CancellationToken ct = default)
         {
-            // 1. SSHトンネルの確立を保証
-            await EnsureSshTunnelAsync(ct);
-
-            // 2. 匿名オブジェクトでペイロードを作成
             var payload = new
             {
                 id = moneyExpenseItem.Id.ToString(),
@@ -123,29 +92,7 @@ namespace DailyPoints.Api
                 amount = moneyExpenseItem.Amount,
             };
 
-            // 3. JSONにシリアライズ
-            var jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            };
-
-            var jsonContent = JsonSerializer.Serialize(payload, jsonOptions);
-            using var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-            // 4. トンネル経由（ポート18000）でサーバーへPOST
-            const string requestUrl = $"{BaseUrl}/api/expenses";
-
-            using var response = await httpClient.PostAsync(requestUrl, content, ct);
-
-            // 5. ステータスコードの検証とレスポンスの返却
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorReason = await response.Content.ReadAsStringAsync(ct);
-                throw new HttpRequestException($"サーバーエラー: {response.StatusCode} - {errorReason}");
-            }
-
-            // サーバーから返ってきた文字列（IDやステータスなど）を返す
-            return await response.Content.ReadAsStringAsync(ct);
+            return await PostJsonAsync("/api/expenses", payload, ct);
         }
 
         public void Dispose()
@@ -167,47 +114,34 @@ namespace DailyPoints.Api
             httpClient.Dispose();
         }
 
-        private async Task PostAsync(string url, HttpContent content, CancellationToken ct)
+        private async Task<string> PostJsonAsync<T>(string relativeUrl, T payload, CancellationToken ct)
         {
-            for (var i = 0; i < 3; i++)
-            {
-                try
-                {
-                    using var response = await httpClient.PostAsync(url, content, ct);
+            // サーバーに Json を投げるという共通処理を抽出したメソッド。
+            // SSHトンネルの確立を保証
+            await EnsureSshTunnelAsync(ct);
 
-                    // 409 Conflict (IntegrityError) のハンドリングが必要な場合はここで行う
-                    response.EnsureSuccessStatusCode();
-                    return;
-                }
-                catch (HttpRequestException) when (i < 2)
-                {
-                    await Task.Delay(1000, ct);
-                    await EnsureSshTunnelAsync(ct);
-                }
+            // JSONにシリアライズ
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            var jsonContent = JsonSerializer.Serialize(payload, jsonOptions);
+            using var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            // リクエストURLの組み立てと送信
+            var requestUrl = $"{BaseUrl}{relativeUrl}";
+            using var response = await httpClient.PostAsync(requestUrl, content, ct);
+
+            // ステータスコードの検証
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorReason = await response.Content.ReadAsStringAsync(ct);
+                throw new HttpRequestException($"サーバーエラー: {response.StatusCode} - {errorReason}");
             }
 
-            throw new Exception("サーバーへのソース追加に失敗しました。");
-        }
-
-        private async Task<string> GetAsync(string url, CancellationToken ct)
-        {
-            for (var i = 0; i < 3; i++)
-            {
-                try
-                {
-                    using var response = await httpClient.GetAsync(url, ct);
-                    response.EnsureSuccessStatusCode();
-                    return await response.Content.ReadAsStringAsync(ct);
-                }
-                catch (HttpRequestException) when (i < 2)
-                {
-                    // トンネルが開通するのを少し待ってリトライ
-                    await Task.Delay(1000, ct);
-                    await EnsureSshTunnelAsync(ct);
-                }
-            }
-
-            throw new Exception("SSHトンネル経由での接続に失敗しました。");
+            // レスポンスを返す
+            return await response.Content.ReadAsStringAsync(ct);
         }
 
         private async Task EnsureSshTunnelAsync(CancellationToken ct)
