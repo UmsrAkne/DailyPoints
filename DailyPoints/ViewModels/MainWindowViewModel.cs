@@ -168,7 +168,7 @@ public class MainWindowViewModel : BindableBase
     {
         var list = await apiClient.GetPointTransactionsAsync();
         PointTransactions.Clear();
-        PointTransactions.AddRange(list);
+        PointTransactions.AddRange(list.OrderByDescending(t => t.SequenceNumber));
 
         Point = PointTransactions.FirstOrDefault()?.Balance ?? 0;
     }
