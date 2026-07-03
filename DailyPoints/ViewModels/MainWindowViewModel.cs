@@ -138,12 +138,25 @@ public class MainWindowViewModel : BindableBase
                 Amount = input,
             };
 
-            var transaction = pointCalculator.Deduct(item);
-            pointService.Add(transaction);
-            Point += transaction.Points;
+            var isSuccess = true;
 
-            ExpensePrice = 0;
-            ExpenseDetailText = string.Empty;
+            try
+            {
+                var message = await apiClient.PostMoneyExpenseAsync(item);
+                Console.WriteLine(message);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                isSuccess = false;
+            }
+
+            if (isSuccess)
+            {
+                ExpensePrice = 0;
+                ExpenseDetailText = string.Empty;
+            }
+
             await UpdatePointTransactions();
         });
 

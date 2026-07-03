@@ -110,10 +110,42 @@ namespace DailyPoints.Api
             return await response.Content.ReadAsStringAsync(ct);
         }
 
-        public async Task<string> PostMoneyExpenseItemAsync(MoneyExpenseItem moneyExpenseItem, CancellationToken ct = default)
+        public async Task<string> PostMoneyExpenseAsync(MoneyExpenseItem moneyExpenseItem, CancellationToken ct = default)
         {
+            // 1. SSHトンネルの確立を保証
             await EnsureSshTunnelAsync(ct);
-            return string.Empty;
+
+            // 2. 匿名オブジェクトでペイロードを作成
+            var payload = new
+            {
+                id = moneyExpenseItem.Id.ToString(),
+                description = moneyExpenseItem.Description,
+                amount = moneyExpenseItem.Amount,
+            };
+
+            // 3. JSONにシリアライズ
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            var jsonContent = JsonSerializer.Serialize(payload, jsonOptions);
+            using var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            // 4. トンネル経由（ポート18000）でサーバーへPOST
+            const string requestUrl = $"{BaseUrl}/api/expenses";
+
+            using var response = await httpClient.PostAsync(requestUrl, content, ct);
+
+            // 5. ステータスコードの検証とレスポンスの返却
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorReason = await response.Content.ReadAsStringAsync(ct);
+                throw new HttpRequestException($"サーバーエラー: {response.StatusCode} - {errorReason}");
+            }
+
+            // サーバーから返ってきた文字列（IDやステータスなど）を返す
+            return await response.Content.ReadAsStringAsync(ct);
         }
 
         public void Dispose()
