@@ -1,4 +1,7 @@
-﻿namespace DailyPoints.Views
+﻿using System;
+using System.ComponentModel;
+
+namespace DailyPoints.Views
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -8,6 +11,14 @@
         public MainWindow()
         {
             InitializeComponent();
+        }
+
+        private void MainWindow_OnClosing(object sender, CancelEventArgs e)
+        {
+            if (DataContext is IDisposable disposableVm)
+            {
+                disposableVm.Dispose();
+            }
         }
     }
 }

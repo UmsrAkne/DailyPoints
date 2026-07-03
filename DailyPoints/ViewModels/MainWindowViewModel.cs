@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using CsvHelper;
@@ -19,7 +20,7 @@ using Prism.Mvvm;
 
 namespace DailyPoints.ViewModels;
 
-public class MainWindowViewModel : BindableBase
+public sealed class MainWindowViewModel : BindableBase, IDisposable
 {
     #if DEBUG
     // ReSharper disable once UnusedMember.Local
@@ -33,6 +34,7 @@ public class MainWindowViewModel : BindableBase
     private readonly PointCalculator pointCalculator = new();
     private readonly PointService pointService;
     private readonly ApiClient apiClient;
+    private readonly CancellationTokenSource cts = new();
     private string inputTasksText = string.Empty;
     private int point;
     private string inputDeductionTasksText = string.Empty;
@@ -42,6 +44,7 @@ public class MainWindowViewModel : BindableBase
     private AsyncRelayCommand fetchPointTransactionsAsyncCommand;
     private AsyncRelayCommand pointDeductionCommand;
     private AsyncRelayCommand pointDeductionFromExpenseCommand;
+    private bool disposed;
 
     public MainWindowViewModel(PointService pointService)
     {
@@ -160,6 +163,11 @@ public class MainWindowViewModel : BindableBase
             await UpdatePointTransactions();
         });
 
+    public void Dispose()
+    {
+        Dispose(true);
+    }
+
     private List<TaskItem> CsvToTaskItems(string csvContent)
     {
         var config = new CsvConfiguration(CultureInfo.InvariantCulture)
@@ -177,13 +185,30 @@ public class MainWindowViewModel : BindableBase
         return records;
     }
 
-    private async Task UpdatePointTransactions()
+    private async Task UpdatePointTransactions(CancellationToken ct = default)
     {
-        var list = await apiClient.GetPointTransactionsAsync();
+        var list = await apiClient.GetPointTransactionsAsync(ct);
         PointTransactions.Clear();
         PointTransactions.AddRange(list.OrderByDescending(t => t.SequenceNumber));
 
         Point = PointTransactions.FirstOrDefault()?.Balance ?? 0;
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            cts.Cancel();
+            cts.Dispose();
+            apiClient.Dispose();
+        }
+
+        disposed = true;
     }
 
     [Conditional("DEBUG")]

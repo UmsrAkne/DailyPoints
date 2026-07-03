@@ -14,6 +14,7 @@
     d:DataContext="{d:DesignInstance viewModels:MainWindowViewModel}"
     prism:ViewModelLocator.AutoWireViewModel="True"
     Background="{StaticResource DeepBackgroundBrush}"
+    Closing="MainWindow_OnClosing"
     mc:Ignorable="d">
 
     <b:Interaction.Triggers>
