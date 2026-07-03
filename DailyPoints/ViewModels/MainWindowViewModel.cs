@@ -15,7 +15,6 @@ using DailyPoints.Databases;
 using DailyPoints.Models;
 using DailyPoints.Utils;
 using DailyPoints.Utils.Csv;
-using Prism.Commands;
 using Prism.Mvvm;
 
 namespace DailyPoints.ViewModels;
@@ -41,6 +40,8 @@ public class MainWindowViewModel : BindableBase
     private string expenseDetailText = string.Empty;
     private AsyncRelayCommand csvToPointCommand;
     private AsyncRelayCommand fetchPointTransactionsAsyncCommand;
+    private AsyncRelayCommand pointDeductionCommand;
+    private AsyncRelayCommand pointDeductionFromExpenseCommand;
 
     public MainWindowViewModel(PointService pointService)
     {
@@ -74,11 +75,7 @@ public class MainWindowViewModel : BindableBase
     public AsyncRelayCommand FetchPointTransactionsAsyncCommand =>
         fetchPointTransactionsAsyncCommand ??= new AsyncRelayCommand(async () =>
         {
-            var list = await apiClient.GetPointTransactionsAsync();
-            PointTransactions.Clear();
-            PointTransactions.AddRange(list);
-
-            Point = PointTransactions.FirstOrDefault()?.Balance ?? 0;
+            await UpdatePointTransactions();
         });
 
     public AsyncRelayCommand CsvToPointAsyncCommand =>
@@ -106,47 +103,49 @@ public class MainWindowViewModel : BindableBase
                 }
             }
 
-            UpdatePointTransactions();
+            await UpdatePointTransactions();
         });
 
-    public DelegateCommand PointDeductionCommand => new DelegateCommand(() =>
-    {
-        if (string.IsNullOrWhiteSpace(InputDeductionTasksText))
+    public AsyncRelayCommand PointDeductionAsyncCommand =>
+        pointDeductionCommand ??= new AsyncRelayCommand(async () =>
         {
-            return;
-        }
+            if (string.IsNullOrWhiteSpace(InputDeductionTasksText))
+            {
+                return;
+            }
 
-        var input = InputDeductionTasksText;
+            var input = InputDeductionTasksText;
 
-        // var items = CsvToTaskItems(input);
-        // PointTransaction はサーバー側で作成して追加する仕様に変更。
-        // items の状態でサーバーに送る。
-        InputDeductionTasksText = string.Empty;
-        UpdatePointTransactions();
-    });
+            // var items = CsvToTaskItems(input);
+            // PointTransaction はサーバー側で作成して追加する仕様に変更。
+            // items の状態でサーバーに送る。
+            InputDeductionTasksText = string.Empty;
+            await UpdatePointTransactions();
+        });
 
-    public DelegateCommand PointDeductionFromExpenseCommand => new DelegateCommand(() =>
-    {
-        if (ExpensePrice <= 0)
+    public AsyncRelayCommand PointDeductionFromExpenseAsyncCommand =>
+        pointDeductionFromExpenseCommand ??= new AsyncRelayCommand(async () =>
         {
-            return;
-        }
+            if (ExpensePrice <= 0)
+            {
+                return;
+            }
 
-        var input = ExpensePrice;
-        var item = new MoneyExpenseItem
-        {
-            Description = ExpenseDetailText,
-            Amount = input,
-        };
+            var input = ExpensePrice;
+            var item = new MoneyExpenseItem
+            {
+                Description = ExpenseDetailText,
+                Amount = input,
+            };
 
-        var transaction = pointCalculator.Deduct(item);
-        pointService.Add(transaction);
-        Point += transaction.Points;
+            var transaction = pointCalculator.Deduct(item);
+            pointService.Add(transaction);
+            Point += transaction.Points;
 
-        ExpensePrice = 0;
-        ExpenseDetailText = string.Empty;
-        UpdatePointTransactions();
-    });
+            ExpensePrice = 0;
+            ExpenseDetailText = string.Empty;
+            await UpdatePointTransactions();
+        });
 
     private List<TaskItem> CsvToTaskItems(string csvContent)
     {
@@ -165,10 +164,13 @@ public class MainWindowViewModel : BindableBase
         return records;
     }
 
-    private void UpdatePointTransactions()
+    private async Task UpdatePointTransactions()
     {
+        var list = await apiClient.GetPointTransactionsAsync();
         PointTransactions.Clear();
-        PointTransactions.AddRange(pointService.GetAll().OrderBy(t => t.Date));
+        PointTransactions.AddRange(list);
+
+        Point = PointTransactions.FirstOrDefault()?.Balance ?? 0;
     }
 
     [Conditional("DEBUG")]

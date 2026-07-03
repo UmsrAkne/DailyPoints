@@ -74,7 +74,7 @@
                         Grid.Row="1"
                         Margin="0,10,0,0"
                         HorizontalAlignment="Right"
-                        Command="{Binding PointDeductionCommand}"
+                        Command="{Binding PointDeductionAsyncCommand}"
                         Content="趣味タスクに対してポイントを消費" />
                 </Grid>
             </TabItem>
@@ -95,7 +95,7 @@
 
                     <Button
                         HorizontalAlignment="Right"
-                        Command="{Binding PointDeductionFromExpenseCommand}"
+                        Command="{Binding PointDeductionFromExpenseAsyncCommand}"
                         Content="ポイントを消費して許可" />
                 </StackPanel>
             </TabItem>
